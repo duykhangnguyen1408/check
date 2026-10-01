@@ -9,6 +9,7 @@
 // runPiPrompt runs; this module owns the session, its audit/error logging, and the trace it
 // produces, not the git commit around it.
 
+
 import os from 'node:os';
 import type { AgentMessage } from '@earendil-works/pi-agent-core';
 import {
@@ -50,9 +51,10 @@ import { createGlobTool, createTodoWriteTool } from './session-tools.js';
 import { createTaskTool } from './task-tool.js';
 import { TraceEmitter } from './trace-emitter.js';
 import { providerTurnError, type SafeProviderTurnDetails, safeProviderTurnDetails } from './turn-error.js';
+import { isRateLimitError, rotateKey, resetKeyPool, getCurrentKeyIndex, getKeyCount } from '../key-rotation.js';
 
 declare global {
-  var SHANNON_DISABLE_LOADER: boolean | undefined;
+  var ASTRA_DISABLE_LOADER: boolean | undefined;
 }
 
 /** Built-in pi tools enabled for every agent (custom tool names are appended). */
@@ -253,10 +255,12 @@ export async function runPiPrompt(
   const execContext = detectExecutionContext(description);
   const progress = createProgressManager(
     { description, useCleanOutput: execContext.useCleanOutput },
-    global.SHANNON_DISABLE_LOADER ?? false,
+    global.ASTRA_DISABLE_LOADER ?? false,
   );
   const auditLogger = createAuditLogger(auditSession, agentName, attemptNumber);
 
+  // Reset key rotation so each agent attempt starts with all keys available.
+  resetKeyPool();
   logger.info(`Running pi agent: ${description}...`);
 
   // 3. Expose bash-invoked CLI tooling (playwright-cli, save-deliverable) to the
@@ -265,7 +269,7 @@ export async function runPiPrompt(
   process.env.PLAYWRIGHT_MCP_OUTPUT_DIR = deliverablesSubdir
     ? path.join(sourceDir, path.dirname(deliverablesSubdir), '.playwright-cli')
     : path.join(sourceDir, '.astra', '.playwright-cli');
-  if (deliverablesSubdir) process.env.SHANNON_DELIVERABLES_SUBDIR = deliverablesSubdir;
+  if (deliverablesSubdir) process.env.ASTRA_DELIVERABLES_SUBDIR = deliverablesSubdir;
 
   // 4. Resolve model + auth, then assemble the tool set (universal task/todo tools
   //    plus any caller-supplied collector/submit tools).
@@ -403,10 +407,60 @@ export async function runPiPrompt(
     });
 
     // 6. Run the agent to completion (resolves at agent_end).
-    await session.prompt(fullPrompt);
+    //    When a free-tier model returns a transient overload (503/429), we wait
+    //    and retry the prompt within the same session up to MAX_OVERLOAD_RETRIES
+    //    times before giving up. This prevents a full Temporal activity-level
+    //    retry (5 min backoff) for a glitch that resolves in seconds.
+    const MAX_OVERLOAD_RETRIES = 3;
+    let overloadRetries = 0;
 
-    // 7. Surface any error captured during the run.
-    if (pendingError) throw pendingError;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      pendingError = null;
+      pendingProviderDetails = null;
+
+      try {
+        await session.prompt(fullPrompt);
+      } catch (e: any) {
+        const message: string = e?.message ?? String(e);
+        if (isRateLimitError(message) && overloadRetries < MAX_OVERLOAD_RETRIES) {
+          overloadRetries++;
+          if (rotateKey()) {
+            logger.info(`Rate limit hit, rotated to key ${getCurrentKeyIndex() + 1} of ${getKeyCount()}`);
+          } else {
+            resetKeyPool();
+            logger.info(`All keys exhausted, reset pool — waiting before retry ${overloadRetries}/${MAX_OVERLOAD_RETRIES}`);
+          }
+          const delayMs = 10_000 * overloadRetries; // 10s, 20s, 30s
+          logger.info(`Provider overloaded, waiting ${delayMs / 1000}s before retry...`);
+          await new Promise((r) => setTimeout(r, delayMs));
+          continue;
+        }
+        throw new Error(`[Native Pi Error] ${message}`);
+      }
+
+      // 7. Surface any error captured during the run via turn_end subscriber.
+      if (pendingError) {
+        const captured = pendingError as PentestError;
+        if (isRateLimitError(captured.message) && overloadRetries < MAX_OVERLOAD_RETRIES) {
+          overloadRetries++;
+          if (rotateKey()) {
+            logger.info(`Provider overloaded, rotated to key ${getCurrentKeyIndex() + 1} of ${getKeyCount()}`);
+          } else {
+            resetKeyPool();
+            logger.info(`All keys exhausted, reset pool — waiting before retry ${overloadRetries}/${MAX_OVERLOAD_RETRIES}`);
+          }
+          const delayMs = 10_000 * overloadRetries;
+          logger.info(`Waiting ${delayMs / 1000}s before retry...`);
+          await new Promise((r) => setTimeout(r, delayMs));
+          continue;
+        }
+        throw captured;
+      }
+
+      // No error — break out of retry loop
+      break;
+    }
 
     // 8. Read usage/cost and final text.
     const usage = totalUsage(session, childUsage);

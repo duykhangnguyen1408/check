@@ -152,7 +152,7 @@ async function ensureTemporalHealthy(spinner: SpinnerResult): Promise<void> {
 }
 
 const DEFAULT_RETENTION_HOURS = 168;
-const RETENTION_ENV = 'SHANNON_TEMPORAL_RETENTION';
+const RETENTION_ENV = 'ASTRA_TEMPORAL_RETENTION';
 const RETENTION_NAMESPACE = 'default';
 
 /**
@@ -359,7 +359,7 @@ function shouldSkipHostsName(name: string, hostname: string): boolean {
  * `host-gateway` so they target the host's loopback instead of the container's.
  */
 function forwardEtcHostsFlags(): string[] {
-  if (!envBool('SHANNON_FORWARD_HOSTS', true)) return [];
+  if (!envBool('ASTRA_FORWARD_HOSTS', true)) return [];
 
   let content: string;
   try {
@@ -445,7 +445,7 @@ export function spawnWorker(opts: WorkerOptions): ChildProcess {
 
   // UID remapping for Linux bind mounts
   if (os.platform() === 'linux' && process.getuid && process.getgid) {
-    args.push('-e', `SHANNON_HOST_UID=${process.getuid()}`, '-e', `SHANNON_HOST_GID=${process.getgid()}`);
+    args.push('-e', `ASTRA_HOST_UID=${process.getuid()}`, '-e', `ASTRA_HOST_GID=${process.getgid()}`);
   }
 
   // Volume mounts
@@ -456,6 +456,8 @@ export function spawnWorker(opts: WorkerOptions): ChildProcess {
   // dirs, nested under the run's INTERNAL_DIR. Container paths are unchanged.
   const internalPath = path.join(opts.workspacesDir, opts.workspace, INTERNAL_DIR);
   args.push('-v', `${path.join(internalPath, 'deliverables')}:${opts.repo.containerPath}/.astra/deliverables`);
+  const workerDistPath = path.resolve(__dirname, '..', '..', 'worker', 'dist');
+  args.push('-v', `${workerDistPath}:/app/apps/worker/dist`);
   args.push('-v', `${path.join(internalPath, 'scratchpad')}:${opts.repo.containerPath}/.astra/scratchpad`);
   args.push('-v', `${path.join(internalPath, '.playwright-cli')}:${opts.repo.containerPath}/.astra/.playwright-cli`);
   args.push('-v', `${path.join(internalPath, '.playwright')}:${opts.repo.containerPath}/.playwright`);

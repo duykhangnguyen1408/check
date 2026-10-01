@@ -77,7 +77,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 // === File Operations ===
 
 function saveDeliverableFile(targetDir: string, filename: string, content: string): string {
-  const subdir = process.env.SHANNON_DELIVERABLES_SUBDIR || '.astra/deliverables';
+  const subdir = process.env.ASTRA_DELIVERABLES_SUBDIR || '.astra/deliverables';
   const deliverablesDir = join(targetDir, ...subdir.split('/'));
   const filepath = join(deliverablesDir, filename);
 

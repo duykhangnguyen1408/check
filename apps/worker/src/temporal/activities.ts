@@ -490,17 +490,31 @@ export async function runPreReconAgent(input: ActivityInput): Promise<AgentMetri
 
   const collector = createPreReconCollector();
 
-  const writeDeliverable = async (deliverablesPath: string): Promise<void> => {
+  const writeDeliverable = async (
+    deliverablesPath: string,
+    execution: { readonly model?: string; readonly agentText?: string } = {},
+  ): Promise<void> => {
     const logger = createActivityLogger();
-    // Skipped tools surface as renderer placeholders, not as activity failures.
     const callStatus = collector.getCallStatus();
     logger.info('Pre-recon tool call status', { callStatus });
 
     const collected = collector.getAll();
-    const markdown = renderPreRecon(collected);
+    const hasCollectorData = Object.values(collected).some((v) => v !== undefined);
+
+    let markdown: string;
+    if (hasCollectorData) {
+      markdown = renderPreRecon(collected);
+      logger.info(`Wrote pre_recon_deliverable.md from structured data (${markdown.length} bytes)`);
+    } else if (execution.agentText) {
+      markdown = `# Pre-Recon Analysis\n\n_Generated from agent text output (model does not support function calling)._\n\n---\n\n${execution.agentText}`;
+      logger.info(`Wrote pre_recon_deliverable.md from agent text fallback (${markdown.length} bytes)`);
+    } else {
+      markdown = renderPreRecon(collected);
+      logger.info('No collector data or agent text — writing placeholders');
+    }
+
     const mdPath = path.join(deliverablesPath, 'pre_recon_deliverable.md');
     await atomicWrite(mdPath, markdown);
-    logger.info(`Wrote pre_recon_deliverable.md from structured data (${markdown.length} bytes)`);
   };
 
   return runAgentActivity('pre-recon', input, collector.tools, writeDeliverable);
@@ -512,17 +526,31 @@ export async function runReconAgent(input: ActivityInput): Promise<AgentMetrics>
 
   const collector = createReconCollector();
 
-  const writeDeliverable = async (deliverablesPath: string): Promise<void> => {
+  const writeDeliverable = async (
+    deliverablesPath: string,
+    execution: { readonly model?: string; readonly agentText?: string } = {},
+  ): Promise<void> => {
     const logger = createActivityLogger();
-    // Skipped tools surface as renderer placeholders, not as activity failures.
     const callStatus = collector.getCallStatus();
     logger.info('Recon tool call status', { callStatus });
 
     const collected = collector.getAll();
-    const markdown = renderRecon(collected);
+    const hasCollectorData = Object.values(collected).some((v) => v !== undefined);
+
+    let markdown: string;
+    if (hasCollectorData) {
+      markdown = renderRecon(collected);
+      logger.info(`Wrote recon_deliverable.md from structured data (${markdown.length} bytes)`);
+    } else if (execution.agentText) {
+      markdown = `# Reconnaissance Analysis\n\n_Generated from agent text output (model does not support function calling)._\n\n---\n\n${execution.agentText}`;
+      logger.info(`Wrote recon_deliverable.md from agent text fallback (${markdown.length} bytes)`);
+    } else {
+      markdown = renderRecon(collected);
+      logger.info('No collector data or agent text — writing placeholders');
+    }
+
     const mdPath = path.join(deliverablesPath, 'recon_deliverable.md');
     await atomicWrite(mdPath, markdown);
-    logger.info(`Wrote recon_deliverable.md from structured data (${markdown.length} bytes)`);
   };
 
   return runAgentActivity('recon', input, collector.tools, writeDeliverable);
@@ -538,17 +566,31 @@ async function runVulnAgentWithCollector(
 
   const collector = createVulnCollector(vulnClass);
 
-  const writeDeliverable = async (deliverablesPath: string): Promise<void> => {
+  const writeDeliverable = async (
+    deliverablesPath: string,
+    execution: { readonly model?: string; readonly agentText?: string } = {},
+  ): Promise<void> => {
     const logger = createActivityLogger();
-    // Skipped tools surface as renderer placeholders, not as activity failures.
     const callStatus = collector.getCallStatus();
     logger.info(`${vulnClass} vuln tool call status`, { callStatus });
 
     const collected = collector.getAll();
-    const markdown = renderVulnDeliverable(vulnClass, collected);
+    const hasCollectorData = Object.values(collected).some((v) => v !== undefined);
+
+    let markdown: string;
+    if (hasCollectorData) {
+      markdown = renderVulnDeliverable(vulnClass, collected);
+      logger.info(`Wrote ${vulnClass}_analysis_deliverable.md from structured data (${markdown.length} bytes)`);
+    } else if (execution.agentText) {
+      markdown = `# ${vulnClass.charAt(0).toUpperCase() + vulnClass.slice(1)} Vulnerability Analysis\n\n_Generated from agent text output (model does not support function calling)._\n\n---\n\n${execution.agentText}`;
+      logger.info(`Wrote ${vulnClass}_analysis_deliverable.md from agent text fallback (${markdown.length} bytes)`);
+    } else {
+      markdown = renderVulnDeliverable(vulnClass, collected);
+      logger.info('No collector data or agent text — writing placeholders');
+    }
+
     const mdPath = path.join(deliverablesPath, `${vulnClass}_analysis_deliverable.md`);
     await atomicWrite(mdPath, markdown);
-    logger.info(`Wrote ${vulnClass}_analysis_deliverable.md from structured data (${markdown.length} bytes)`);
   };
 
   return runAgentActivity(agentName, input, collector.tools, writeDeliverable);
@@ -746,6 +788,42 @@ export async function runReportAgent(input: ActivityInput, exploit: boolean): Pr
     await atomicWrite(reportJsonPath, `${JSON.stringify(reportData, null, 2)}\n`);
     logger.info(`Wrote ${REPORT_JSON_FILENAME} with ${findings.length} finding(s)`);
   };
+
+  // Pre-populate report.json with structured findings before running the AI agent.
+  // This ensures the report can be assembled even if the model is interrupted mid-stream
+  // (e.g. provider rate-limit / context-limit errors). The agent only enriches executive_summary.
+  const { createFindingCollector: prePopCollector } = await import('../collectors/finding-collector.js');
+  const { attachQueueCodeLocations: prePopAttach } = await import('../services/code-location-join.js');
+  const prePopLogger = createActivityLogger();
+  try {
+    const prePopFindings = await prePopAttach(
+      prePopCollector(exploit).getAll(),
+      deliverablesPath,
+      prePopLogger,
+      durableState.participating_classes,
+    );
+    const prePopPath = path.join(deliverablesPath, REPORT_JSON_FILENAME);
+    const defaultMeta: ReportMeta = {
+      target: input.webUrl,
+      assessment_date: assessmentDate,
+      scope: formatVulnClassScope(resolveAnalysisClasses(input)),
+      executive_summary: '',
+      exploit,
+    };
+    // Only pre-populate if report.json does not already exist (e.g. resume scenario)
+    if (!(await fileExists(prePopPath))) {
+      const defaultReportData: ReportData = {
+        report_meta: defaultMeta,
+        findings: prePopFindings,
+        ...(input.failedClasses && input.failedClasses.length > 0 && { not_assessed: input.failedClasses }),
+        reconciliation_failed: [...reportProgress.renumber_failed_classes],
+      };
+      await atomicWrite(prePopPath, `${JSON.stringify(defaultReportData, null, 2)}\n`);
+      prePopLogger.info(`Pre-populated ${REPORT_JSON_FILENAME} with ${prePopFindings.length} finding(s) before agent run`);
+    }
+  } catch (prePopErr) {
+    prePopLogger.warn(`Failed to pre-populate report.json: ${String(prePopErr)} — agent will create it`);
+  }
 
   return runAgentActivity('report', input, collector.tools, writeDeliverable, 'report-draft', false);
 }

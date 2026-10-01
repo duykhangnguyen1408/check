@@ -19,7 +19,7 @@ import fs from 'node:fs';
 
 const ISSUES_URL = 'https://github.com/KeygraphHQ/astra/issues';
 
-const UNEXPECTED_MESSAGE = 'Astra encountered an unexpected failure. Reference code: SHANNON_UNEXPECTED_ERROR';
+const UNEXPECTED_MESSAGE = 'Astra encountered an unexpected failure. Reference code: ASTRA_UNEXPECTED_ERROR';
 const REPORT_HINT = `If this looks like a bug, please report it: ${ISSUES_URL}`;
 
 /** Stable machine-readable failure codes for the JSON error envelope. */

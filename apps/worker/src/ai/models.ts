@@ -9,7 +9,7 @@
  *
  * One model runs the entire workflow. Users name it with a single setting:
  *
- *   SHANNON_AI_MODEL=<provider>:<model-id>
+ *   ASTRA_AI_MODEL=<provider>:<model-id>
  *
  * The provider half decides the endpoint, the credential, and the API dialect;
  * the model half is passed to pi's registry as-is. The separator is a colon
@@ -60,10 +60,10 @@ function isCuratedProvider(value: string): value is CuratedProviderId {
 }
 
 /** Generic API key, honored for any provider Astra does not curate. */
-export const GENERIC_API_KEY_ENV = 'SHANNON_AI_API_KEY';
+export const GENERIC_API_KEY_ENV = 'ASTRA_AI_API_KEY';
 
 /**
- * Env vars carrying each curated provider's API key, in precedence order. Shannon
+ * Env vars carrying each curated provider's API key, in precedence order. Astra
  * does not invent credential names — these are the variables each provider's own
  * tooling uses. Bedrock pairs its bearer token with AWS_REGION, which is provider
  * config rather than a credential.
@@ -81,7 +81,7 @@ export const PROVIDER_API_KEY_ENV: Readonly<Record<CuratedProviderId, readonly s
   google: ['GEMINI_API_KEY'],
 };
 
-/** Model used when SHANNON_AI_MODEL is unset. */
+/** Model used when ASTRA_AI_MODEL is unset. */
 export const DEFAULT_MODEL_SPEC = 'anthropic:claude-sonnet-4-6';
 
 /** Browsable pi model catalogue — the source of valid `<provider>:<model-id>` ids. */
@@ -102,7 +102,7 @@ export function parseModelSpec(spec: string): ModelSpec {
   const separator = trimmed.indexOf(':');
   if (separator === -1) {
     throw new Error(
-      `SHANNON_AI_MODEL must be "<provider>:<model-id>", got "${trimmed}". Example: ${DEFAULT_MODEL_SPEC}`,
+      `ASTRA_AI_MODEL must be "<provider>:<model-id>", got "${trimmed}". Example: ${DEFAULT_MODEL_SPEC}`,
     );
   }
 
@@ -111,16 +111,16 @@ export function parseModelSpec(spec: string): ModelSpec {
 
   if (!providerId || !modelId) {
     throw new Error(
-      `SHANNON_AI_MODEL must be "<provider>:<model-id>", got "${trimmed}". Example: ${DEFAULT_MODEL_SPEC}`,
+      `ASTRA_AI_MODEL must be "<provider>:<model-id>", got "${trimmed}". Example: ${DEFAULT_MODEL_SPEC}`,
     );
   }
 
   return { providerId, modelId };
 }
 
-/** Resolve the run's model from SHANNON_AI_MODEL, falling back to the default. */
+/** Resolve the run's model from ASTRA_AI_MODEL, falling back to the default. */
 export function resolveModelSpec(): ModelSpec {
-  return parseModelSpec(process.env.SHANNON_AI_MODEL || DEFAULT_MODEL_SPEC);
+  return parseModelSpec(process.env.ASTRA_AI_MODEL || DEFAULT_MODEL_SPEC);
 }
 
 export interface ProviderCredentials {
@@ -132,7 +132,7 @@ export interface ProviderCredentials {
 
 /**
  * Collect the API key and optional endpoint override for a provider. A curated
- * provider's own variables win, then the generic SHANNON_AI_API_KEY. Bedrock is
+ * provider's own variables win, then the generic ASTRA_AI_API_KEY. Bedrock is
  * excluded — it authenticates through its AWS_ variables, which pi reads directly.
  */
 export function resolveProviderCredentials(providerId: string): ProviderCredentials {
@@ -149,7 +149,7 @@ export function resolveProviderCredentials(providerId: string): ProviderCredenti
   if (!credentials.apiKey && providerId !== 'amazon-bedrock' && process.env[GENERIC_API_KEY_ENV]) {
     credentials.apiKey = process.env[GENERIC_API_KEY_ENV];
   }
-  if (process.env.SHANNON_AI_BASE_URL) credentials.baseUrl = process.env.SHANNON_AI_BASE_URL;
+  if (process.env.ASTRA_AI_BASE_URL) credentials.baseUrl = process.env.ASTRA_AI_BASE_URL;
 
   return credentials;
 }
@@ -280,7 +280,7 @@ export function resolveModel(
 }
 
 /**
- * Resolve SHANNON_AI_MODEL, build a ModelRuntime primed with the provider's
+ * Resolve ASTRA_AI_MODEL, build a ModelRuntime primed with the provider's
  * credential, and look the model up in it.
  */
 export async function resolveModelSelection(): Promise<ModelSelection> {

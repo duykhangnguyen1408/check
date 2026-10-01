@@ -39,7 +39,7 @@ const DEFAULT_LIST_RESULTS = 200;
 const MAX_OUTPUT_BYTES = 64 * 1024;
 // The live-tool-side counterpart of the source jail's copy-time exclusion (source-jail.ts): even if
 // one of these somehow existed in the jailed tree, the read/grep/find/ls/glob tools built below must
-// still refuse to serve it. `.git` is deliverables history, `.shannon` is scan internals, `.pi` is
+// still refuse to serve it. `.git` is deliverables history, `.astra` is scan internals, `.pi` is
 // provider credentials.
 const ALWAYS_DENIED_PATHS = Object.freeze(['.git', '.astra', '.pi'] as const);
 const TRANSIENT_IO_CODES = new Set([

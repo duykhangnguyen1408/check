@@ -57,7 +57,7 @@ export function classifyErrorCode(error: unknown): ErrorCode | undefined {
  */
 const REMEDIATION_HINTS: Record<string, string> = {
   AuthenticationError: "Verify the selected provider's API key is valid and not expired.",
-  ModelNotFoundError: 'Check SHANNON_AI_MODEL against pi.dev/models, or supply the model with --models-config.',
+  ModelNotFoundError: 'Check ASTRA_AI_MODEL against pi.dev/models, or supply the model with --models-config.',
   ModelConfigError: 'Check the --models-config file parses and matches pi’s models.json schema.',
   ConfigurationError: 'Check your CONFIG file path and contents.',
   GitError: 'Check repository path and git state.',

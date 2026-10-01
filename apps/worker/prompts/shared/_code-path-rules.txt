@@ -1,11 +1,10 @@
 <code_path_rules>
 Source-code routing. Each rule is tagged `[FILE]` (literal path) or `[GLOB]` (pattern). All paths are repository-relative.
 
-How to apply (focus rules):
-- For `[FILE]` entries — delegate analysis to the `task` tool.
-- For `[GLOB]` entries — use the `glob` tool to enumerate matches, then delegate analysis of every match to the `task` tool.
+- `[FILE]` entries: delegate analysis to the `task` tool.
+- `[GLOB]` entries: use `glob` to enumerate matches, then delegate every match to the `task` tool.
 
-Avoid — out of scope. Skip entirely; the tool layer will block any access attempts.
+Avoid — out of scope. Skip entirely; the tool layer will block access attempts.
 {{CODE_RULES_AVOID}}
 
 Focus — priority work assignments. Analyze every entry.

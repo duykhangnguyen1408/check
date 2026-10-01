@@ -118,7 +118,7 @@ function main(): void {
     process.exit(1);
   }
 
-  const subdir = process.env.SHANNON_DELIVERABLES_SUBDIR || '.astra/deliverables';
+  const subdir = process.env.ASTRA_DELIVERABLES_SUBDIR || '.astra/deliverables';
   const deliverablesDir = resolve(process.cwd(), ...subdir.split('/'));
   mkdirSync(deliverablesDir, { recursive: true });
   const filePath = resolve(deliverablesDir, REPORT_FILENAME);

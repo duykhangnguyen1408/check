@@ -24,5 +24,5 @@
  */
 export const PI_RETRY_SETTINGS = {
   enabled: false,
-  provider: { maxRetries: 8, maxRetryDelayMs: 120_000 },
+  provider: { maxRetries: 2, maxRetryDelayMs: 120_000 },
 } as const;

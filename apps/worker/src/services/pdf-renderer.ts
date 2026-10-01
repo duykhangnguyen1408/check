@@ -52,7 +52,7 @@ export interface RenderReportPdfOptions {
   readonly templatePath: string;
   /** Absolute path where the compiled PDF should be written. */
   readonly outputPath: string;
-  /** Name shown on the cover/footer. Defaults to "Shannon". */
+  /** Name shown on the cover/footer. Defaults to "Astra". */
   readonly tester?: string;
   /** Wordmark shown on the cover. Defaults to "Astra | AI Pentester by Keygraph". */
   readonly brand?: string;

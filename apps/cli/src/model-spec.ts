@@ -1,5 +1,5 @@
 /**
- * Parsing for the single model setting, `SHANNON_AI_MODEL=<provider>:<model-id>`.
+ * Parsing for the single model setting, `ASTRA_AI_MODEL=<provider>:<model-id>`.
  *
  * Mirrors apps/worker/src/ai/models.ts. The CLI cannot import from the worker
  * package (it ships as a standalone bundle), so the provider list and the parse
@@ -20,7 +20,7 @@ export function isCuratedProvider(value: string): value is CuratedProviderId {
 }
 
 /** Generic API key, honored for any provider Astra does not curate. Mirrors the worker. */
-export const GENERIC_API_KEY_ENV = 'SHANNON_AI_API_KEY';
+export const GENERIC_API_KEY_ENV = 'ASTRA_AI_API_KEY';
 
 /**
  * Env vars carrying each curated provider's API key, in precedence order. Any one of
@@ -49,7 +49,7 @@ export const PROVIDER_CREDENTIAL_HINT: Readonly<Record<CuratedProviderId, string
   'amazon-bedrock': 'AWS_REGION and AWS_BEARER_TOKEN_BEDROCK',
 };
 
-/** Model used when SHANNON_AI_MODEL is unset. */
+/** Model used when ASTRA_AI_MODEL is unset. */
 export const DEFAULT_MODEL_SPEC = 'anthropic:claude-sonnet-4-6';
 
 export interface ModelSpec {
@@ -66,7 +66,7 @@ export interface ModelSpec {
 export function parseModelSpec(spec: string): ModelSpec | string {
   const trimmed = spec.trim();
   const separator = trimmed.indexOf(':');
-  const malformed = `SHANNON_AI_MODEL must be "<provider>:<model-id>", got "${trimmed}". Example: ${DEFAULT_MODEL_SPEC}`;
+  const malformed = `ASTRA_AI_MODEL must be "<provider>:<model-id>", got "${trimmed}". Example: ${DEFAULT_MODEL_SPEC}`;
   if (separator === -1) return malformed;
 
   const providerId = trimmed.slice(0, separator).trim();
@@ -78,5 +78,5 @@ export function parseModelSpec(spec: string): ModelSpec | string {
 
 /** Resolve the run's model spec from the environment, or an error string. */
 export function resolveModelSpec(): ModelSpec | string {
-  return parseModelSpec(process.env.SHANNON_AI_MODEL || DEFAULT_MODEL_SPEC);
+  return parseModelSpec(process.env.ASTRA_AI_MODEL || DEFAULT_MODEL_SPEC);
 }

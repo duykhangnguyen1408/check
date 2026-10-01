@@ -1,28 +1,41 @@
 {
   "providers": {
-    "ollama": {
-      "baseUrl": "http://172.17.0.1:11434/v1",
-      "api": "openai-completions",
-      "apiKey": "ollama",
+    "openrouter": {
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "api": "openai-responses",
+      "apiKey": "ASTRA_AI_API_KEY",
+      "compat": {},
+      "models": [
+        {
+          "id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "name": "Nemotron 3 Ultra 550B (Free)",
+          "input": ["text"],
+          "contextWindow": 32000,
+          "maxTokens": 4096
+        }
+      ]
+    },
+    "cohere": {
+      "baseUrl": "https://api.cohere.com/v1",
+      "api": "openai-responses",
+      "apiKey": "ASTRA_AI_API_KEY",
       "compat": {
-        "supportsDeveloperRole": false,
-        "supportsReasoningEffort": false
+        "dropSystemMessage": false
       },
       "models": [
         {
-          "id": "qwen3:14b",
-          "name": "Qwen 3 14B",
-          "input": [
-            "text"
-          ],
-          "contextWindow": 32768,
-          "maxTokens": 8192,
-          "cost": {
-            "input": 0,
-            "output": 0,
-            "cacheRead": 0,
-            "cacheWrite": 0
-          }
+          "id": "command-r-plus-08-2024",
+          "name": "Command R+ (08-2024)",
+          "input": ["text"],
+          "contextWindow": 128000,
+          "maxTokens": 4096
+        },
+        {
+          "id": "command-r-plus",
+          "name": "Command R+",
+          "input": ["text"],
+          "contextWindow": 128000,
+          "maxTokens": 4096
         }
       ]
     }

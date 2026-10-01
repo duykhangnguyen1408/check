@@ -1,11 +1,11 @@
 {
-  "name": "@keygraph/shannon",
+  "name": "@keygraph/astra",
   "version": "0.0.0",
-  "description": "Shannon is an autonomous white-box AI pentester for web applications and APIs, by Keygraph.",
+  "description": "Astra is an autonomous white-box AI pentester for web applications and APIs, by Keygraph.",
   "type": "module",
   "main": "dist/index.mjs",
   "bin": {
-    "shannon": "dist/index.mjs"
+    "astra": "dist/index.mjs"
   },
   "files": [
     "dist",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@clack/prompts": "^1.1.0",
     "@temporalio/client": "1.15.0",
+    "chalk": "^4.1.2",
     "chokidar": "^5.0.0",
     "dotenv": "^17.3.1",
     "smol-toml": "^1.6.1"
@@ -38,12 +39,12 @@
   "author": "Keygraph, Inc.",
   "license": "AGPL-3.0-only",
   "bugs": {
-    "url": "https://github.com/KeygraphHQ/shannon/issues"
+    "url": "https://github.com/KeygraphHQ/astra/issues"
   },
-  "homepage": "https://github.com/KeygraphHQ/shannon#readme",
+  "homepage": "https://github.com/KeygraphHQ/astra#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KeygraphHQ/shannon.git",
+    "url": "git+https://github.com/KeygraphHQ/astra.git",
     "directory": "apps/cli"
   },
   "engines": {

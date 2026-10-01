@@ -20,6 +20,7 @@ import { resolveRunFile } from '../paths.js';
 import { resolveWorkflowId } from '../session.js';
 import { waitForWorkflowClose } from '../temporal-client.js';
 import { stdoutIsTerminal } from '../tty.js';
+import chalk from 'chalk';
 
 const TERMINAL_HEADINGS = new Set(['Scan COMPLETED', 'Scan PARTIAL', 'Scan FAILED', 'Scan CANCELLED']);
 
@@ -31,6 +32,18 @@ const AGENT_RESUME_BOUNDARY = /^--- RESUMED \(.+\) ---$/u;
 
 function isResumeBoundary(line: string): boolean {
   return line === 'RESUMED' || AGENT_RESUME_BOUNDARY.test(line);
+}
+
+function colorizeLogLine(line: string): string | null {
+  if (line.includes('[PHASE]')) return chalk.blueBright(line);
+  if (line.includes('Completed (') || line.includes('completed (')) return chalk.greenBright(line);
+  if (line.includes('[ERROR]') || line.includes('Failed (') || line.includes('failed (')) return chalk.redBright(line);
+  
+  // Hide standard tool calls to keep terminal clean
+  if (line.includes('] read: ') || line.includes('] ls: ') || line.includes('] find: ') || line.includes('] grep: ') || line.includes('] todo_write: ') || line.includes('] bash: ') || line.includes('] set_') || line.includes('] add_') || line.includes('] submit_')) {
+    return null;
+  }
+  return line;
 }
 
 /** Tracks only complete structural lines while output remains byte-for-byte unchanged. */
@@ -168,7 +181,17 @@ export function tailUntilComplete(logFile: string, opts: TailOptions = {}): Prom
         const { size } = fs.statSync(logFile);
         if (size <= position) return completion.isComplete();
         const data = readRange(logFile, position, size);
-        process.stdout.write(data);
+        
+        // Convert to string and process line by line to add color
+        const textChunk = data.toString('utf8');
+        const formattedChunk = textChunk.split('\n').map((line) => {
+          // don't colorize empty lines or dividers
+          if (!line.trim() || line.startsWith('=')) return line;
+          return colorizeLogLine(line);
+        }).filter(line => line !== null).join('\n');
+        
+        process.stdout.write(formattedChunk);
+        
         position = size;
         completion.ingest(completionDecoder.write(data));
         return completion.isComplete();

@@ -485,12 +485,12 @@ function isNonBrowserPrompt(promptName: string): boolean {
   return NON_BROWSER_PROMPT_PREFIXES.some((prefix) => promptName.startsWith(prefix));
 }
 
-// Resolve promptDir override against SHANNON_WORKER_ROOT so relative paths
+// Resolve promptDir override against ASTRA_WORKER_ROOT so relative paths
 // from callers stay cwd-independent.
 function resolvePromptDir(promptDir: string | undefined): string {
   if (!promptDir) return PROMPTS_DIR;
   if (path.isAbsolute(promptDir)) return promptDir;
-  return path.resolve(process.env.SHANNON_WORKER_ROOT ?? process.cwd(), promptDir);
+  return path.resolve(process.env.ASTRA_WORKER_ROOT ?? process.cwd(), promptDir);
 }
 
 // Pure function: Load and interpolate prompt template

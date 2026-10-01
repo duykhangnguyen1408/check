@@ -13,7 +13,7 @@ export interface AstraConfig {
   openai?: { api_key?: string };
   xai?: { api_key?: string };
   bedrock?: { region?: string; token?: string };
-  /** Generic credential for any provider Astra does not curate. Maps to SHANNON_AI_API_KEY. */
+  /** Generic credential for any provider Astra does not curate. Maps to ASTRA_AI_API_KEY. */
   provider?: { api_key?: string };
 }
 

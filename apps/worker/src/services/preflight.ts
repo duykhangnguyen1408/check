@@ -55,12 +55,13 @@ import type { Config, Rule } from '../types/config.js';
 import { ErrorCode } from '../types/errors.js';
 import { err, isErr, ok, type Result } from '../types/result.js';
 import { isRetryableFailure, PentestError } from './error-handling.js';
+import { getCurrentKeyIndex, getKeyCount, isRateLimitError, rotateKey } from '../ai/key-rotation.js';
 
 const TARGET_URL_TIMEOUT_MS = 10_000;
 const DEFAULT_CREDENTIAL_PROBE_TIMEOUT_MS = 480_000;
 
 function credentialProbeTimeoutMs(): number {
-  const configured = process.env.SHANNON_CREDENTIAL_PROBE_TIMEOUT_MS;
+  const configured = process.env.ASTRA_CREDENTIAL_PROBE_TIMEOUT_MS;
   if (!configured) return DEFAULT_CREDENTIAL_PROBE_TIMEOUT_MS;
   const parsed = Number(configured);
   if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_CREDENTIAL_PROBE_TIMEOUT_MS;
@@ -348,7 +349,7 @@ async function validateCredentials(logger: ActivityLogger): Promise<Result<void,
 
   // 2. Credential presence. Bedrock needs both AWS_ vars; every other provider
   //    needs one API key.
-  const credentials = resolveProviderCredentials(spec.providerId);
+  let credentials = resolveProviderCredentials(spec.providerId);
 
   // With a mounted pi auth.json the env-var checks don't apply — step 4's probe validates it.
   const isBedrock = spec.providerId === 'amazon-bedrock';
@@ -370,10 +371,10 @@ async function validateCredentials(logger: ActivityLogger): Promise<Result<void,
   //    are the easiest to get wrong, since region prefixes and version suffixes differ
   //    per model (`us.anthropic.claude-opus-5` exists, bare `anthropic.` does not).
   //    An id the registry lacks is supplied by --models-config, not guessed at here.
-  const modelRuntime = await createModelRuntime(spec.providerId, credentials.apiKey);
+  let modelRuntime = await createModelRuntime(spec.providerId, credentials.apiKey);
 
   // A model config that fails to parse or compose leaves pi with an empty or fallback
-  // provider, which would surface below as "model not found" and blame SHANNON_AI_MODEL
+  // provider, which would surface below as "model not found" and blame ASTRA_AI_MODEL
   // for the file's fault. Report the real cause first.
   const modelsConfig = modelsConfigPath();
   if (modelsConfig) {
@@ -392,11 +393,11 @@ async function validateCredentials(logger: ActivityLogger): Promise<Result<void,
     );
   }
 
-  const baseModel = resolveModel(modelRuntime, spec.providerId, spec.modelId, credentials.baseUrl);
+  let baseModel = resolveModel(modelRuntime, spec.providerId, spec.modelId, credentials.baseUrl);
   if (!baseModel) {
     return err(
       new PentestError(
-        `Model not found in pi registry: provider="${spec.providerId}" model="${spec.modelId}". Check SHANNON_AI_MODEL — browse valid providers and models at ${PI_CATALOG_URL}. A model the catalogue does not carry can be defined in a model config passed with --models-config.`,
+        `Model not found in pi registry: provider="${spec.providerId}" model="${spec.modelId}". Check ASTRA_AI_MODEL — browse valid providers and models at ${PI_CATALOG_URL}. A model the catalogue does not carry can be defined in a model config passed with --models-config.`,
         'config',
         false,
         { providerId: spec.providerId, modelId: spec.modelId },
@@ -412,11 +413,22 @@ async function validateCredentials(logger: ActivityLogger): Promise<Result<void,
   //    rather than partway through the run. Bedrock included: pi resolves the
   //    bearer token from the primed credential and the region from AWS_REGION,
   //    so the probe exercises the same auth path the scan will.
+  //    When multiple API keys are provided, rotate through them on rate-limit errors.
   const authType = describeAuth(spec.providerId, credentials.baseUrl);
-  logger.info(`Validating ${authType} via pi...`);
-  const probe = await probeCredentialsWithPi(baseModel, modelRuntime, authType);
+  const keyPoolDesc = getKeyCount() > 1 ? ` (${getKeyCount()} keys in pool)` : '';
+  logger.info(`Validating ${authType} via pi...${keyPoolDesc}`);
+
+  let probe = await probeCredentialsWithPi(baseModel, modelRuntime, authType);
+  while (isErr(probe) && isRateLimitError(probe.error.message) && rotateKey()) {
+    logger.info(`Key rate-limited, trying key ${getCurrentKeyIndex() + 1} of ${getKeyCount()}...`);
+    credentials = resolveProviderCredentials(spec.providerId);
+    modelRuntime = await createModelRuntime(spec.providerId, credentials.apiKey);
+    baseModel = resolveModel(modelRuntime, spec.providerId, spec.modelId, credentials.baseUrl)!;
+    probe = await probeCredentialsWithPi(baseModel, modelRuntime, authType);
+  }
+
   if (isErr(probe)) return probe;
-  logger.info(`${authType} OK`);
+  logger.info(`${authType} OK (using key ${getCurrentKeyIndex() + 1} of ${getKeyCount()})`);
   return ok(undefined);
 }
 

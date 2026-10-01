@@ -13,7 +13,6 @@
  */
 export const BROWSER_AGENTS: ReadonlySet<string> = new Set([
   'recon',
-  'injection-vuln',
   'injection-exploit', 
   'validate-authentication',
   'verify-exploit',

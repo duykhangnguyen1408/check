@@ -28,6 +28,12 @@
  *   TEMPORAL_ADDRESS - Temporal server address (default: localhost:7233)
  */
 
+import { initKeyPool } from '../ai/key-rotation.js';
+
+if (process.env.ASTRA_AI_API_KEY) {
+  initKeyPool(process.env.ASTRA_AI_API_KEY);
+}
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -500,7 +506,7 @@ async function loadOrchestrationConfig(configPath: string | undefined): Promise<
       agenticSast: {
         codePathAvoids,
         codePathFocus,
-        modelSpec: process.env.SHANNON_AI_MODEL?.trim() || DEFAULT_MODEL_SPEC,
+        modelSpec: process.env.ASTRA_AI_MODEL?.trim() || DEFAULT_MODEL_SPEC,
         capellaFormatVersion: CAPELLA_FORMAT_VERSION,
         promptSetVersion: CAPELLA_PROMPT_SET_VERSION,
       },

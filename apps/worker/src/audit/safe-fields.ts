@@ -35,7 +35,7 @@ const SAFE_ERROR_MESSAGES: Readonly<Record<ErrorCode, string>> = {
   [ErrorCode.AUTH_FAILED]: 'Authentication validation failed.',
   [ErrorCode.AUTH_LOGIN_FAILED]: 'The configured login could not be completed.',
   [ErrorCode.MODEL_NOT_FOUND]:
-    'The selected model was not found in the harness catalogue. Check SHANNON_AI_MODEL, or supply the model with --models-config.',
+    'The selected model was not found in the harness catalogue. Check ASTRA_AI_MODEL, or supply the model with --models-config.',
   [ErrorCode.MODEL_CONFIG_INVALID]: 'The model configuration file could not be used.',
 };
 

@@ -13,7 +13,7 @@ import path from 'node:path';
 import { ArtifactIntegrityError, ReconciliationIoError } from '../reconciliation/artifact-store.js';
 
 const JAIL_PREFIX = 'astra-task-formation-';
-// Never copied into the model-readable jail: `.git` carries deliverables history, `.shannon` holds
+// Never copied into the model-readable jail: `.git` carries deliverables history, `.astra` holds
 // scan internals, and `.pi` holds provider credentials. Any of these reaching the jail would expose
 // them to the tools the model drives. The post-copy verification re-checks their absence by name.
 const ALWAYS_EXCLUDED_NAMES = Object.freeze(['.git', '.astra', '.pi'] as const);

@@ -25,22 +25,22 @@ import {
 /**
  * Variables forwarded to every worker container regardless of provider. Each is
  * forwarded only when set, so an unused one never appears in the container.
- * SHANNON_AI_API_KEY rides along because it is provider-neutral.
+ * ASTRA_AI_API_KEY rides along because it is provider-neutral.
  */
 const COMMON_FORWARD_VARS = [
-  'SHANNON_AI_MODEL',
-  'SHANNON_AI_BASE_URL',
+  'ASTRA_AI_MODEL',
+  'ASTRA_AI_BASE_URL',
   // Opt-in debug flag: when set, the worker persists a bounded, sanitized snippet of a failed
   // provider turn's raw error message to error.log. Off by default; provider prose stays out of
   // durable state unless an operator deliberately enables it for a diagnosis.
-  'SHANNON_DEBUG_PROVIDER_ERRORS',
+  'ASTRA_DEBUG_PROVIDER_ERRORS',
   GENERIC_API_KEY_ENV,
 ] as const;
 
 /**
  * Credential variables for one provider. Only the selected provider's entries are
  * forwarded, so a key for an unused provider never enters the scan container. An
- * uncurated provider has none — it relies on the common SHANNON_AI_API_KEY.
+ * uncurated provider has none — it relies on the common ASTRA_AI_API_KEY.
  */
 function providerForwardVars(providerId: string): readonly string[] {
   if (!isCuratedProvider(providerId)) return [];
@@ -56,7 +56,7 @@ export function envBool(name: string, defaultValue: boolean): boolean {
   return defaultValue;
 }
 
-const USE_PI_AUTH_ENV = 'SHANNON_USE_PI_AUTH';
+const USE_PI_AUTH_ENV = 'ASTRA_USE_PI_AUTH';
 
 /** Where the host's auth.json is mounted: pi's standard location (worker HOME is /tmp), read natively. */
 export const PI_AUTH_CONTAINER_PATH = '/tmp/.pi/agent/auth.json';
@@ -144,9 +144,9 @@ function configuredProviders(): CuratedProviderId[] {
   return CURATED_PROVIDERS.filter((providerId) => hasNamedCredential(providerId));
 }
 
-/** Whether SHANNON_AI_MODEL was set by the user, rather than falling back to the default. */
+/** Whether ASTRA_AI_MODEL was set by the user, rather than falling back to the default. */
 function modelExplicitlySelected(): boolean {
-  return Boolean(process.env.SHANNON_AI_MODEL?.trim());
+  return Boolean(process.env.ASTRA_AI_MODEL?.trim());
 }
 
 /**
@@ -166,7 +166,7 @@ function describeMissingCredential(providerId: string): string {
 
   const [provider] = configuredProviders();
   if (provider) {
-    return `A credential for "${provider}" is set, but no model is selected. Set SHANNON_AI_MODEL=${provider}:<model-id> to use it.`;
+    return `A credential for "${provider}" is set, but no model is selected. Set ASTRA_AI_MODEL=${provider}:<model-id> to use it.`;
   }
 
   const hint =
@@ -205,7 +205,7 @@ export function validateCredentials(): CredentialValidation {
   }
 
   // 3. Exactly one provider may be configured. Several complete credentials make
-  //    the scan's provider depend on SHANNON_AI_MODEL alone, which is too easy to
+  //    the scan's provider depend on ASTRA_AI_MODEL alone, which is too easy to
   //    misread as "both are in play" and too easy to redirect by editing one line.
   const configured = configuredProviders();
   if (configured.length > 1) {
@@ -223,7 +223,7 @@ export function validateCredentials(): CredentialValidation {
     const lines = [`Credentials for more than one provider are set: ${list}.`];
     if (extraVars.length > 0) {
       lines.push(
-        `Astra runs one provider per scan, selected by SHANNON_AI_MODEL ("${spec.providerId}:...").`,
+        `Astra runs one provider per scan, selected by ASTRA_AI_MODEL ("${spec.providerId}:...").`,
         `Keep ${spec.providerId} and drop the rest — ${dropHint}`,
         `  unset ${extraVars.join(' ')}`,
       );

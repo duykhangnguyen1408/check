@@ -33,8 +33,8 @@ interface ConfigMapping {
 /** Maps every supported env var to its TOML path (section.key) and expected type. */
 const CONFIG_MAP: readonly ConfigMapping[] = [
   // Core — base_url points any provider at a proxy or gateway
-  { env: 'SHANNON_AI_MODEL', toml: 'core.model', type: 'string' },
-  { env: 'SHANNON_AI_BASE_URL', toml: 'core.base_url', type: 'string' },
+  { env: 'ASTRA_AI_MODEL', toml: 'core.model', type: 'string' },
+  { env: 'ASTRA_AI_BASE_URL', toml: 'core.base_url', type: 'string' },
 
   // Anthropic
   { env: 'ANTHROPIC_API_KEY', toml: 'anthropic.api_key', type: 'string' },
@@ -234,10 +234,10 @@ function validateConfig(config: TOMLConfig): string[] {
 
 function assertNoCredentialConflict(toml: TOMLConfig): void {
   const tomlBaseUrl = typeof toml.core?.base_url === 'string' ? toml.core.base_url : undefined;
-  if (!tomlBaseUrl || process.env.SHANNON_AI_BASE_URL) return;
+  if (!tomlBaseUrl || process.env.ASTRA_AI_BASE_URL) return;
 
   const tomlModel = typeof toml.core?.model === 'string' ? toml.core.model : DEFAULT_MODEL_SPEC;
-  const spec = parseModelSpec(process.env.SHANNON_AI_MODEL ?? tomlModel);
+  const spec = parseModelSpec(process.env.ASTRA_AI_MODEL ?? tomlModel);
   if (typeof spec === 'string' || !isCuratedProvider(spec.providerId)) return;
 
   for (const envVar of PROVIDER_API_KEY_ENV[spec.providerId]) {
@@ -249,7 +249,7 @@ function assertNoCredentialConflict(toml: TOMLConfig): void {
     if (envHasCredential) {
       fail(
         `${envVar} in your environment conflicts with the gateway credential in config.toml (core.base_url = ${tomlBaseUrl}).`,
-        `Unset ${envVar}, or set SHANNON_AI_BASE_URL to override both from the environment.`,
+        `Unset ${envVar}, or set ASTRA_AI_BASE_URL to override both from the environment.`,
       );
     }
     return;

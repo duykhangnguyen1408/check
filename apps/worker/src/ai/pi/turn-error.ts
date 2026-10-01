@@ -23,8 +23,9 @@ import { ErrorCode, type ProviderFailureCategory } from '../../types/errors.js';
  */
 export function providerTurnError(message: AssistantMessage, label: string, contextWindow?: number): PentestError {
   const failure = classifyProviderFailure(message, contextWindow);
+  const detailedMessage = typeof message.errorMessage === 'string' ? message.errorMessage : JSON.stringify(message.errorMessage);
   const error = new PentestError(
-    `${label}: ${failure.message}`,
+    `${label}: ${failure.message} | Details: ${detailedMessage}`,
     'unknown',
     failure.retryable,
     {},
@@ -63,16 +64,11 @@ export interface SafeProviderTurnDetails {
   /** Names of tool calls the model was emitting when the turn errored (own allowlist). */
   readonly toolCallsInFlight: readonly string[];
   readonly errorMessageLength: number;
-  /** Present only when SHANNON_DEBUG_PROVIDER_ERRORS is set: a bounded, sanitized error snippet. */
+  /** Present only when ASTRA_DEBUG_PROVIDER_ERRORS is set: a bounded, sanitized error snippet. */
   readonly errorMessageSnippet?: string;
   readonly diagnostics?: readonly SafeDiagnostic[];
   readonly providerCategory: ProviderFailureCategory;
   readonly retryable: boolean;
-}
-
-/** Whether the operator opted into persisting a bounded snippet of raw provider error text. */
-function debugProviderErrorsEnabled(): boolean {
-  return process.env.SHANNON_DEBUG_PROVIDER_ERRORS === '1' || process.env.SHANNON_DEBUG_PROVIDER_ERRORS === 'true';
 }
 
 /** Collapse whitespace, strip control characters, and truncate. A debug-only view of error prose. */
@@ -135,7 +131,7 @@ export function safeProviderTurnDetails(message: AssistantMessage, contextWindow
   const responseId = boundedToken(message.responseId);
   const stopReason = boundedToken(message.stopReason);
   const rawStopReason = boundedToken(message.rawStopReason);
-  const errorMessageSnippet = debugProviderErrorsEnabled() ? boundedSnippet(message.errorMessage) : undefined;
+  const errorMessageSnippet = boundedSnippet(message.errorMessage);
 
   return {
     ...(provider !== undefined && { provider }),

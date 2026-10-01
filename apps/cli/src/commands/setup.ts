@@ -140,7 +140,7 @@ async function setupProvider(provider: CuratedProviderId): Promise<AstraConfig> 
 
 /**
  * Any pi provider Astra does not curate. The id is free text — the worker's
- * preflight validates it — and the key is stored generically as SHANNON_AI_API_KEY.
+ * preflight validates it — and the key is stored generically as ASTRA_AI_API_KEY.
  * An optional base URL points that provider at a proxy or LLM gateway; left blank, the
  * provider's own endpoint is used.
  */
