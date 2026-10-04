@@ -4,7 +4,7 @@
 Astra là một công cụ **AI‑Pentest** tự động, được thiết kế để kiểm tra bảo mật các ứng dụng web và API. Nó sử dụng mô hình ngôn ngữ lớn (LLM) để khám phá, phân tích và khai thác các lỗ hổng injection va file (SQLi, Command Injection, Path Traversal/LFI, SSTI, Insecure Deserialization) trong môi trường Docker.
 
 ## Features / Chức năng chính
-- **Phát hiện tự động** các lỗ hổng injection thông qua ba pha: `pre‑recon`, `recon`, `vulnerability‑exploitation`.
+- **Phát hiện tự động** các lỗ hổng injection va file thông qua ba pha: `pre‑recon`, `recon`, `vulnerability‑exploitation`.
 - **Khai thác và chứng minh** (exploitation) các lỗ hổng đã phát hiện, tạo ra bằng chứng (proof‑of‑impact).
 - **Báo cáo chi tiết** dạng PDF + Markdown, bao gồm:
   - Executive summary
