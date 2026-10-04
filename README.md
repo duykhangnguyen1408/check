@@ -1,98 +1,79 @@
-<div align="center">
+# Astra Pentester
 
-# Astra - AI Pentester
+## Overview
+Astra là một công cụ **AI‑Pentest** tự động, được thiết kế để kiểm tra bảo mật các ứng dụng web và API. Nó sử dụng mô hình ngôn ngữ lớn (LLM) để khám phá, phân tích và khai thác các lỗ hổng injection (SQLi, Command Injection, Path Traversal/LFI, SSTI, Insecure Deserialization) trong môi trường Docker.
 
-### Autonomous AI pentesting agent specializing in Command Injection vulnerabilities.
+## Features / Chức năng chính
+- **Phát hiện tự động** các lỗ hổng injection thông qua ba pha: `pre‑recon`, `recon`, `vulnerability‑exploitation`.
+- **Khai thác và chứng minh** (exploitation) các lỗ hổng đã phát hiện, tạo ra bằng chứng (proof‑of‑impact).
+- **Báo cáo chi tiết** dạng PDF + Markdown, bao gồm:
+  - Executive summary
+  - Danh sách các finding với severity, impact, remediation suggestions.
+- **Tiến trình checkpoint** giúp tái khởi động quét nếu quá trình bị gián đoạn.
+- **Hỗ trợ Docker**: khởi chạy target container và worker container trong cùng mạng `astra-net`.
+- **Mô‑đun extensible**: có thể thêm pipeline mới (ví dụ XSS, SSRF) bằng cách mở rộng `workflows.ts`.
 
-Astra analyzes your source code, identifies attack vectors, and executes real exploits to prove vulnerabilities before they reach production. 
-
-**This is the Astra Open Source version: run the full agent locally from your command line.**
-
-</div>
-
----
-
-## 🎯 Overview
-
-Astra is a customized, agentic AI security tool that operates in multiple distinct phases to emulate a real penetration tester:
-
-1. **Pre-Recon**: Analyzes the application's source code architecture and technology stack.
-2. **Recon**: Discovers entry points, routes, and potential injection sinks.
-3. **Vulnerability Analysis**: Deeply analyzes the data flow to identify exploitable vulnerabilities.
-4. **Exploitation**: Safely executes generated payloads against the target application to confirm the vulnerability.
-5. **Reporting**: Compiles a comprehensive final report with executive summaries and detailed technical evidence.
-
-*Note: This specific fork of Astra has been stripped down and highly optimized to focus exclusively on **Injection vulnerabilities** (such as Command Injection).*
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **Docker**: Required to run the isolated worker container safely.
-- **Node.js 18+ & pnpm**: Required for building and running the CLI in local mode.
-- **OpenRouter API Key**: Astra is configured to use OpenRouter to access powerful LLMs (like `nvidia/nemotron-3-ultra-550b-a55b:free` or `inclusionai/ling-3.0-flash-fin:free`).
-
-### 1. Build the Project
-
-Ensure you have installed the dependencies and built the Docker image:
-
-```bash
-# Install Node dependencies
-pnpm install
-
-# Build the CLI and Worker source
-pnpm run build
-
-# Build the isolated Docker worker image
-docker build -t astra-worker:latest .
+## Architecture Overview
 ```
-
-### 2. Configure Environment Variables
-
-Astra requires your API key and the selected model to be exported in your terminal before running:
-
-```bash
-export ASTRA_AI_API_KEY="sk-or-v1-YOUR-OPENROUTER-API-KEY"
-export ASTRA_AI_MODEL="openrouter:inclusionai/ling-3.0-flash-fin:free"
++-------------------+        +-------------------+        +-------------------+
+|   Target App      | <---> |   Astra Worker    | <---> |   Temporal Server |
+| (Docker container)| HTTP   | (docker container| RPC   |   (Temporal)      |
++-------------------+        +-------------------+        +-------------------+
 ```
+- **Target App**: Ứng dụng Flask được chạy trong container `astra-archive-app` (port 5000).
+- **Astra Worker**: Container thực thi các agent (pre‑recon, recon, exploit, report) bằng LLM.
+- **Temporal Server**: Quản lý workflow, lưu trạng thái và checkpoint để khôi phục.
 
-*Note: Ensure your OpenRouter API key has sufficient credits or rate-limits for the selected model.*
-
-### 3. Run a Scan
-
-To start an autonomous scan, run the `./astra start` command from the root of this repository. 
-
-Example running against a local target:
-
+## Getting Started
 ```bash
-# ASTRA_FORWARD_HOSTS=false is required if you are not using standard docker host networking
+# 1. Khởi động target app (đảm bảo Docker đang chạy)
+cd ~/Documents/ChatGPT/astra
+docker compose up -d   # tạo container astra-archive-app
+
+# 2. Kiểm tra container đang chạy
+docker ps | grep astra-archive-app
+
+# 3. Chạy quét
 ASTRA_FORWARD_HOSTS=false ./astra start \
-  -u "https://cmdi.cyberjutsu-lab.tech:3001/" \
-  -r "/path/to/target/source-code/" \
-  -w "cmdi-scan-01" \
-  --models-config "./models.json" \
+  -u "http://astra-archive-app:5000" \
+  -r "$HOME/Documents/ChatGPT/astra" \
+  -w "Web-pentest" \
+  --models-config "$HOME/astra/astra/models.json" \
   --keep-container \
   --follow
 ```
+- Tham số `-u` là URL mục tiêu.
+- Tham số `-r` chỉ thư mục source code của dự án.
+- Tham số `-w` là tên workspace, dùng để lưu log và báo cáo.
+- `--keep-container` giữ lại container mục tiêu sau khi quét.
+- `--follow` hiển thị log thời gian thực.
 
-**Options:**
-- `-u, --url`: The target application URL.
-- `-r, --repo`: Absolute path to the target's source code directory.
-- `-w, --workspace`: A unique name for this scan session. All logs, databases, and reports will be saved in `workspaces/<workspace-name>`.
-- `--models-config`: Path to your custom models configuration (e.g., `models.json`).
-- `--follow`: Stream the workflow logs to your terminal in real-time.
-- `--keep-container`: Keep the Docker container alive after the scan finishes (useful for debugging).
+## Scan Phases (Các giai đoạn quét)
+| Phase           | Mô tả                                                                 |
+|-----------------|----------------------------------------------------------------------|
+| `pre‑recon`    | Thu thập thông tin nhanh, xác định các endpoint có thể khai thác.   |
+| `recon`        | Phân tích chi tiết, tạo queue các vulnerability class.               |
+| `vulnerability‑exploitation` | Chạy các agent khai thác (OS command, SQLi, LFI, SSTI, Deserialization). |
+| `report`       | Tổng hợp findings, tạo file `report.json`, PDF và Markdown.         |
 
-## 📂 Project Structure
+## Reporting
+- **`Security-Assessment-Report.md`**: bản markdown chi tiết.
+- **`Security-Assessment-Report.pdf`**: PDF được render bằng Typst.
+- **`report.json`**: dữ liệu gốc (JSON) dùng cho các công cụ CI/CD.
+- Các trường `report_meta` (target, assessment_date, scope, executive_summary) được thiết lập bằng lệnh `set-report-meta`.
 
-- `apps/cli/`: The command-line interface logic.
-- `apps/worker/`: The Temporal worker containing the AI agents, prompts, and tool execution logic.
-  - `apps/worker/prompts/`: Contains the `.txt` and `.hbs` prompt templates for each AI agent phase.
-- `models.json`: Curated list of supported LLM models.
-- `workspaces/`: Auto-generated directory containing scan logs, databases, and final reports (ignored by git).
+## Configuration
+- **`models.json`**: Định nghĩa model LLM và các prompt. Thay đổi model bằng cách chỉnh sửa file này và chạy lại `./astra start`.
+- **`.astra/`** (trong workspace): Chứa log workflow, checkpoint, và queue JSON.
 
-## ⚠️ Disclaimer
+## Extending / Contributing
+1. **Thêm pipeline mới**: Mở `apps/worker/src/temporal/workflows.ts`, thêm cấu hình trong `buildPipelineConfigs`.
+2. **Cập nhật prompt**: Các prompt nằm trong `apps/worker/prompts/`. Thay đổi để điều chỉnh cách AI suy luận.
+3. **Thêm activity**: Viết một activity mới trong `apps/worker/src/temporal/activities.ts` và đăng ký trong workflow.
+4. **Kiểm thử**: Sử dụng `npm test` (hoặc `yarn test`) để chạy unit tests hiện có.
 
-**Astra actively executes real exploits.** 
-Run this tool ONLY against applications and environments you explicitly own or have written authorization to test. Do not run Astra against production systems. The authors are not responsible for any misuse or damage caused by this software.
-# check
+## License
+Astra được phát hành dưới **MIT License** – bạn có thể tự do sửa đổi, phân phối và sử dụng cho mục đích bảo mật nội bộ.
+
+---
+*Generated by Astra Pentester (AI‑Driven Security Assessment Tool)*
